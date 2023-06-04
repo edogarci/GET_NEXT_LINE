@@ -5,7 +5,7 @@ int main() {
 	char *str;
 
 	// Abrir el archivo en modo lectura
-	fd = open("C:\\Users\\Edo\\Desktop\\GET_NEXT_LINE\\test_file.txt", O_RDONLY);
+	fd = open("/home/edogarci/Desktop/GET_NEXT_LINE/test_file.txt", O_RDONLY);
 	str = get_next_line(fd);
 	close(fd);
 
