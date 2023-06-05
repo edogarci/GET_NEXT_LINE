@@ -1,4 +1,2 @@
 linea 1
-esto la segunda
-y por fin la tercera
-pero no te olvides de que esta es la cuarta
+linea 2
