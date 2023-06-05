@@ -44,7 +44,7 @@ static void	f_add_buffer_to_line(char *line, char *buffer, int read_len, char **
 
     if (*aux)
     {
-        while (pos < read_len)
+        while (pos < f_strlen(*aux))
         {
             line[cont] = (*aux)[pos];
             cont++;
@@ -84,21 +84,17 @@ char	f_analyze_read(int read_len, char *buffer, char **line)
     char    *line_aux;
 
 	found = f_find_eol_eof(read_len, buffer, &pos, &type);
-	if (found == BOOL_YES)
-	{
-		return (BOOL_NO);
-	}
-	else if (found == BOOL_NO)
-	{
-		current_len = f_strlen(*line);
-        f_move_line_to_aux(*line, &line_aux, current_len);
-		if (*line)
-			free(*line);
-		*line = malloc((current_len + pos) * sizeof(char));
-		f_clean((pos + current_len), *line);
-		f_add_buffer_to_line(*line, buffer, read_len, &line_aux);
-        if (line_aux)
-            free (line_aux);
-		return (BOOL_YES);
-	}
+    current_len = f_strlen(*line);
+    f_move_line_to_aux(*line, &line_aux, current_len);
+    if (*line)
+        free(*line);
+    *line = malloc((current_len + pos) * sizeof(char));
+    f_clean((pos + current_len), *line);
+    f_add_buffer_to_line(*line, buffer, pos, &line_aux);
+    if (line_aux)
+        free (line_aux);
+    if (found == BOOL_YES)
+        return (BOOL_NO);
+    else
+        return (BOOL_YES);
 }
