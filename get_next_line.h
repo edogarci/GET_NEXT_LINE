@@ -1,22 +1,26 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   get_next_line.h                                    :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: edogarci <edogarci@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2023/06/06 09:36:13 by edogarci          #+#    #+#             */
+/*   Updated: 2023/06/06 09:36:13 by edogarci         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #ifndef GET_NEXT_LINE_H
-#define GET_NEXT_LINE_H
+# define GET_NEXT_LINE_H
 
 # include <unistd.h>
 # include <fcntl.h>
 # include <stdlib.h>
 
-# define BUFFER_SIZE 3
+# define BUFFER_SIZE 5
 # define BOOL_YES 'X'
 # define BOOL_NO ' '
-# define CONS_EOL 'L'
-# define CONS_EOF 'F'
-
 
 char	*get_next_line(int fd);
-char	f_analyze_read(int read_len, char *buffer, char **line);
-void	f_clean(int len, char *line);
-int		f_strlen(char *line);
-void    f_move_line_to_aux(char *line, char **aux, int current_len);
-char	f_find_eol_eof(int read_len, char *buffer, int *pos, char *type);
 
 #endif
