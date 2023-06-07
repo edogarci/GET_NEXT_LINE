@@ -13,28 +13,44 @@
 #include "get_next_line.h"
 #include <stdio.h>
 
-void	f_init_vars(char *read_again)
-{
-	*read_again = BOOL_YES;
-}
-
 int	f_strlen(char *str)
 {
 	int	cont;
 
 	cont = 0;
-	if (!str)
-		return (cont);
-	while (str[cont] != '\0')
-		cont++;
+	if (str)
+	{
+		while (str[cont] != '\0')
+			cont++;
+	}
 	return (cont);
 }
 
-static void	f_str1_to_str2(char *str1, char *str2)
+void	*f_malloc_clean(size_t count, size_t size)
 {
+	char	*str;
+	int		pos;
+
+	str = NULL;
+	str = malloc(count * size);
+	if (!str)
+		return (NULL);
+	pos = 0;
+	while (pos < count)
+	{
+		str[pos] = '\0';
+		pos++;
+	}
+	return (str);
+}
+
+char	*f_str1_to_str2(char *str1, char *str2)
+{
+	int	cont1;
 	int	pos;
 
-	if (str1 && str2)
+	cont1 = f_strlen(str1);
+	if (cont1 > 0)
 	{
 		pos = 0;
 		while (str1[pos] != '\0')
@@ -43,132 +59,156 @@ static void	f_str1_to_str2(char *str1, char *str2)
 			pos++;
 		}
 	}
+	return (str2);
 }
 
-static void	f_add_to_line(char c, void **line)
+char	*f_add_buffer_to_line(char *buffer, char *line, char *end_type)
 {
-	int		current_len;
-	void	*aux;
+	char	*aux;
+	int		pos;
 
-	current_len = f_strlen((char *)*line);
-	if (current_len != 0)
+	aux = NULL;
+	pos = 0;
+	while (pos < f_strlen(buffer))
 	{
-		aux = malloc((current_len) * sizeof(char));
-		if (aux)
+		if (buffer[pos] == '\n')
+			return (*end_type = CONST_EOL, line);
+		if (buffer[pos] == '\0')
+			return (*end_type = CONST_EOF, line);
+		if (!line)
+			line = f_malloc_clean(2, sizeof(char));
+		else
 		{
-			f_str1_to_str2((char *)*line, (char *)aux);
-			if (*line)
-				free(*line);
-			*line = malloc(current_len + 1 * sizeof(char));
-			f_str1_to_str2((char *)aux, (char *)*line);
-			((char *)*line)[current_len] = c;
+			aux = f_malloc_clean(f_strlen(line) + 1, sizeof(char));
+			aux = f_str1_to_str2(line, aux);
+			free(line);
+			line = NULL;
+			line = f_malloc_clean(f_strlen(aux) + 2, sizeof(char));
+			line = f_str1_to_str2(aux, line);
+			free(aux);
+			aux = NULL;
 		}
-		free(aux);
+		line[f_strlen(line)] = buffer[pos];
+		pos++;
 	}
-	else
-	{
-		*line = malloc(1 * sizeof(char));
-		((char *)*line)[0] = c;
-	}
+	return (*end_type = ' ', line);
 }
 
-char	f_analyze_read(int read_len, void *buffer, void **line)
+char	*f_upd_buffer(char *str)
+{
+	char	*aux;
+	int		pos;
+	int		str_pos;
+
+	aux = NULL;
+	aux = f_malloc_clean(BUFFER_SIZE, sizeof(char));
+	if (!aux)
+		return (NULL);
+	aux = f_str1_to_str2(str, aux);
+	pos = 0;
+	while (aux[pos] != '\n')
+		pos++;
+	str_pos = 0;
+	while (aux[pos + 1] != '\0')
+	{
+		str[str_pos] = aux[pos + 1];
+		pos++;
+		str_pos++;
+	}
+	while (str_pos < BUFFER_SIZE)
+	{
+		str[str_pos] = '\0';
+		str_pos++;
+	}
+	free(aux);
+	aux = NULL;
+	return (str);
+}
+
+char	*f_clean(char *ptr)
 {
 	int	pos;
 
 	pos = 0;
-	while (pos < read_len
-		&& ((char *)buffer)[pos] != '\n' && ((char *)buffer)[pos] != '\0')
-	{
-		f_add_to_line(((char *)buffer)[pos], line);
-		pos++;
-	}
-	if (((char *)buffer)[pos - 1] == '\n' || ((char *)buffer)[pos - 1] == '\0')
-		return (BOOL_NO);
-	else
-		return (BOOL_YES);
-}
-
-void	f_upd_buffer(void **buffer)
-{
-	int		pos;
-	int		buff_pos;
-	void	*aux;
-
-	aux = malloc(BUFFER_SIZE * sizeof(char));
-	f_str1_to_str2((char *)*buffer, (char *)aux);
-	pos = 0;
-	while (((char *)aux)[pos] != '\n')
-		pos++;
-	pos++;
-	buff_pos = 0;
 	while (pos < BUFFER_SIZE)
 	{
-		((char *)*buffer)[buff_pos] = ((char *)aux)[pos];
-		buff_pos++;
+		ptr[pos] = '\0';
 		pos++;
 	}
-	while (buff_pos < BUFFER_SIZE)
+	return (ptr);
+}
+
+char	*f_get_line(int fd)
+{
+	static char	*buffer;
+	char		*line;
+	int			read_len;
+	char		end_type;
+	char		upd_flag;
+
+	line = NULL;
+	upd_flag = BOOL_NO;
+	if (!buffer)
 	{
-		((char *)*buffer)[buff_pos] = '\0';
-		buff_pos++;
+		buffer = f_malloc_clean(BUFFER_SIZE, sizeof(char));
+		if (!buffer)
+			return (NULL);
 	}
-	free(aux);
+	else
+	{
+		buffer = f_upd_buffer(buffer);
+		upd_flag = BOOL_YES;
+	}		
+	read_len = 1;
+	while (read_len > 0)
+	{
+		if (upd_flag == BOOL_NO)
+//			buffer = f_clean(buffer);
+			read_len = read(fd, buffer, BUFFER_SIZE);
+		if (read_len < 0)
+			return (free(buffer), buffer = NULL, NULL);
+		line = f_add_buffer_to_line(buffer, line, &end_type);
+		if (end_type == CONST_EOL || end_type == CONST_EOF)
+			return (line);
+		upd_flag = BOOL_NO;
+	}
+	return (NULL);
 }
 
 char	*get_next_line(int fd)
 {
-	static void	*buffer;
-	char		read_again;
-	int			read_len;
-	void		*line;
-	char		read_from_file;
+	char	*res;
 
-	if (fd <= 0 || BUFFER_SIZE <= 0)
+	res = NULL;
+	if (fd < 0 || BUFFER_SIZE <= 0)
 		return (NULL);
-	f_init_vars(&read_again);
-	if (!buffer)
-	{
-		buffer = (char *)malloc(BUFFER_SIZE * sizeof(char));
-		if (!buffer)
-			return (NULL);
-		read_from_file = BOOL_YES;
-	}
+	res = f_get_line(fd);
+	if (!res)
+		return (NULL);
 	else
-		read_from_file = BOOL_NO;
-	while (read_again == BOOL_YES)
-	{
-		if (read_from_file == BOOL_YES)
-		{
-			read_len = (int)read(fd, (char *)buffer, BUFFER_SIZE);
-			if (read_len < 0)
-				return (NULL);
-		}
-		else
-		{
-			f_upd_buffer(&buffer);
-			read_from_file = BOOL_YES;
-			read_len = f_strlen((char *)buffer);
-		}
-		read_again = f_analyze_read(read_len, buffer, &line);
-	}
-	f_add_to_line('\n', &line);
-	return ((char *)line);
+		return (res);
 }
 
 int	main(void)
 {
-	int	fd;
+	int		fd;
+	char	*str;
 
 	fd = open("test_file.txt", O_RDONLY);
-	printf("%s", get_next_line(fd));
-	printf("%s", get_next_line(fd));
-	printf("%s", get_next_line(fd));
-	printf("%s", get_next_line(fd));
-	printf("%s", get_next_line(fd));
-	printf("%s", get_next_line(fd));
-	printf("%s", get_next_line(fd));
-	printf("%s", get_next_line(fd));
+	str = get_next_line(fd);
+	printf("%s\n", str);
+	str = get_next_line(fd);
+	printf("%s\n", str);
+	str = get_next_line(fd);
+	printf("%s\n", str);
+	str = get_next_line(fd);
+	printf("%s\n", str);
+	str = get_next_line(fd);
+	printf("%s\n", str);
+	str = get_next_line(fd);
+	printf("%s\n", str);
+	str = get_next_line(fd);
+	printf("%s\n", str);
 	close(fd);
 	return (0);
 }

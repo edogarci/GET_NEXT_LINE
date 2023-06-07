@@ -20,6 +20,8 @@
 # define BUFFER_SIZE 5
 # define BOOL_YES 'X'
 # define BOOL_NO ' '
+# define CONST_EOL 'L'
+# define CONST_EOF 'F'
 
 char	*get_next_line(int fd);
 
