@@ -17,7 +17,7 @@
 # include <fcntl.h>
 # include <stdlib.h>
 
-# define BUFFER_SIZE 5
+/* # define BUFFER_SIZE 10 */
 # define BOOL_YES 'X'
 # define BOOL_NO ' '
 # define CONST_EOL 'L'
