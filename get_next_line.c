@@ -11,134 +11,101 @@
 /* ************************************************************************** */
 
 #include "get_next_line.h"
-#include <stdio.h>
 
-int	f_strlen(char *str)
+int	f_find_buff_eol(char **buffer, char **end_type)
 {
-	int	cont;
+	int		pos;
+	int		buff_len;
 
-	cont = 0;
-	if (str)
-	{
-		while (str[cont] != '\0')
-			cont++;
-	}
-	return (cont);
-}
- 
-void	*f_malloc_clean(size_t count, size_t size)
-{
-	char	*str;
-	size_t	pos;
-
-	str = NULL;
-	str = malloc(count * size);
-	if (!str)
-		return (NULL);
 	pos = 0;
-	while (pos < count)
+	buff_len = 0;
+	while (buff_len < f_strlen(*buffer))
 	{
-		str[pos] = '\0';
-		pos++;
-	}
-	return (str);
-}
-
-char	*f_str1_to_str2(char *str1, char *str2)
-{
-	int	cont1;
-	int	pos;
-
-	cont1 = f_strlen(str1);
-	if (cont1 > 0)
-	{
-		pos = 0;
-		while (str1[pos] != '\0')
+		if ((*buffer)[buff_len] == '\n')
 		{
-			str2[pos] = str1[pos];
-			pos++;
+			**end_type = 'L';
+			break ;
 		}
+		if ((*buffer)[pos] == '\0')
+		{
+			**end_type = ' ';
+			break ;
+		}
+		buff_len++;
 	}
-	return (str2);
+	return (buff_len);
 }
 
 char	*f_add_buffer_to_line(char *buffer, char *line, char *end_type)
 {
 	char	*aux;
 	int		pos;
+	int		cont;
+	int		buff_len;
 
-	aux = NULL;
-	pos = 0;
-	while (pos < f_strlen(buffer))
+	buff_len = f_find_buff_eol(&buffer, &end_type);
+	if (buff_len != 0)
 	{
-		if (buffer[pos] == '\n')
-			return (*end_type = CONST_EOL, line);
-/* 		if (buffer[pos] == '\0')
-			return (*end_type = CONST_EOF, line); */
 		if (!line)
-			line = f_malloc_clean(2, sizeof(char));
+			line = f_alloc(buff_len + 1, sizeof(char), ' ');
 		else
 		{
-			aux = f_malloc_clean(f_strlen(line) + 1, sizeof(char));
+			aux = f_alloc(f_strlen(line) + 1, sizeof(char), ' ');
 			aux = f_str1_to_str2(line, aux);
 			free(line);
-			line = NULL;
-			line = f_malloc_clean(f_strlen(aux) + 2, sizeof(char));
+			line = f_alloc(f_strlen(aux) + buff_len + 1, sizeof(char), ' ');
 			line = f_str1_to_str2(aux, line);
 			free(aux);
-			aux = NULL;
 		}
-		line[f_strlen(line)] = buffer[pos];
-		pos++;
+		cont = f_strlen(line);
+		pos = 0;
+		while (pos < buff_len)
+			line[cont++] = buffer[pos++];
 	}
-	return (*end_type = ' ', line);
+	return (line);
 }
 
-char	*f_upd_buffer(char *str)
+int	f_read_from_file(int fd, char flag, char **buff)
 {
-	char	*aux;
-	int		pos;
-	int		str_pos;
+	int	read_len;
 
-	aux = NULL;
-/* 	aux = f_malloc_clean(BUFFER_SIZE, sizeof(char)); */
-	aux = f_malloc_clean(BUFFER_SIZE + 1, sizeof(char));
-	if (!aux)
-		return (NULL);
-	aux = f_str1_to_str2(str, aux);
-	pos = 0;
-	while (aux[pos] != '\n')
-		pos++;
-	str_pos = 0;
-	while (aux[pos + 1] != '\0')
+	read_len = 1;
+	if (flag == ' ')
 	{
-		str[str_pos] = aux[pos + 1];
-		pos++;
-		str_pos++;
+		f_clean_ptr(&*buff);
+		if (*buff)
+			read_len = read(fd, *buff, BUFFER_SIZE);
 	}
-	while (str_pos < BUFFER_SIZE)
-	{
-		str[str_pos] = '\0';
-		str_pos++;
-	}
-	free(aux);
-	aux = NULL;
-	return (str);
+	return (read_len);
 }
 
-char	*f_clean_ptr(char **ptr)
+char	*f_get_line(int fd, char *lastline, int read_len)
 {
-	if (*ptr)
-		free(*ptr);
-	*ptr = NULL;
-/* 	*ptr = f_malloc_clean(BUFFER_SIZE, sizeof(char)); */
-	*ptr = f_malloc_clean(BUFFER_SIZE + 1, sizeof(char));
-	if (!*ptr)
-		return (NULL);
-	return (*ptr);
-}
+	static char	*buffer;
+	char		*line;
+	char		end_type;
+	char		upd_flag;
 
-char	*f_get_line(int fd, char *is_last_line)
+	buffer = f_upd_buff(buffer, &upd_flag, &line, &end_type);
+	while (read_len > 0)
+	{
+		read_len = f_read_from_file(fd, upd_flag, &buffer);
+		if (read_len < 0)
+			return (free(line), line = NULL, free(buffer), buffer = NULL, NULL);
+		else if (read_len == 0 && f_strlen(line) == 0)
+			return (free(buffer), buffer = NULL, NULL);
+		else if (read_len == 0 && f_strlen(line) != 0)
+			return (*lastline = 'X', free(buffer), buffer = NULL, line);
+		line = f_add_buffer_to_line(buffer, line, &end_type);
+		if (end_type == 'L' && f_strlen(line) == 0)
+			line = f_alloc(BUFFER_SIZE + 1, sizeof(char), 'X');
+		if (end_type == 'L')
+			return (line);
+		upd_flag = ' ';
+	}
+	return (NULL);
+}
+/* char	*f_get_line(int fd, char *lastline)
 {
 	static char	*buffer;
 	char		*line;
@@ -147,24 +114,14 @@ char	*f_get_line(int fd, char *is_last_line)
 	char		upd_flag;
 
 	line = NULL;
-	*is_last_line = BOOL_NO;
-	upd_flag = BOOL_NO;
-	if (buffer)
-/* 	if (!buffer)
-	{
-		buffer = f_malloc_clean(BUFFER_SIZE, sizeof(char));
-		if (!buffer)
-			return (NULL);
-	}
-	else*/
-	{ 
-		buffer = f_upd_buffer(buffer);
-		upd_flag = BOOL_YES;
-	}
 	read_len = 1;
+	end_type = ' ';
+	upd_flag = ' ';
+	if (buffer)
+		buffer = f_upd_buffer(buffer, &upd_flag);
 	while (read_len > 0)
 	{
-		if (upd_flag == BOOL_NO)
+		if (upd_flag == ' ')
 		{
 			f_clean_ptr(&buffer);
 			if (!buffer)
@@ -172,77 +129,68 @@ char	*f_get_line(int fd, char *is_last_line)
 			read_len = read(fd, buffer, BUFFER_SIZE);
 		}
 		if (read_len < 0)
-/* 		return (free(buffer), buffer = NULL, NULL); */
-		{
-			free(line);
-			line = NULL;
-			return (free(buffer), buffer = NULL, NULL);
-		}
+			return (free(line), line = NULL, free(buffer), buffer = NULL, NULL);
 		if (read_len == 0)
 		{
 			if (f_strlen(line) == 0)
 				return (free(buffer), buffer = NULL, NULL);
 			else
-			{
-				*is_last_line = BOOL_YES;
-				return (free(buffer), buffer = NULL, line);
-			}
+				return (*lastline = 'X', free(buffer),
+					buffer = NULL, line);
 		}
 		line = f_add_buffer_to_line(buffer, line, &end_type);
-		if (end_type == CONST_EOL)// || end_type == CONST_EOF)
+		if (end_type == 'L')
 		{
 			if (f_strlen(line) == 0)
 			{
-/* 				line = f_malloc_clean(BUFFER_SIZE, sizeof(char)); */
-				line = f_malloc_clean(BUFFER_SIZE + 1, sizeof(char));
+				line = f_alloc(BUFFER_SIZE + 1, sizeof(char));
 				line[0] = '\n';
 			}
 			return (line);
 		}
-		upd_flag = BOOL_NO;
+		upd_flag = ' ';
 	}
 	return (NULL);
-}
+} */
 
 char	*get_next_line(int fd)
 {
 	char	*res;
-	char	is_last_line;
+	char	lastline;
 	int		len;
 	char	*aux;
 
-	res = NULL;
+	lastline = ' ';
 	if (fd < 0 || BUFFER_SIZE <= 0)
 		return (NULL);
-	res = f_get_line(fd, &is_last_line);
+	res = f_get_line(fd, &lastline, 1);
 	if (!res)
 		return (NULL);
-	else if (res[0] != '\n' && is_last_line == BOOL_NO)
+	else if (res[0] != '\n' && lastline == ' ')
 	{
 		len = f_strlen(res);
-		aux = f_malloc_clean((len + 1), sizeof(char));
+		aux = f_alloc((len + 1), sizeof(char), ' ');
 		if (!aux)
 			return (NULL);
 		f_str1_to_str2(res, aux);
 		free(res);
-		res = NULL;
-		res = f_malloc_clean((len + 2), sizeof(char));
+		res = f_alloc((len + 2), sizeof(char), ' ');
 		f_str1_to_str2(aux, res);
 		res[len] = '\n';
 		free(aux);
-		aux = NULL;
 	}
 	return (res);
 }
 
-/* int	main(void)
+/* #include <stdio.h>
+int	main(void)
 {
 	int		fd;
 	char	*str;
 	int		i = 0;
 
 	fd = open("test_file.txt", O_RDONLY);
-	while (i < 6)
+	while (i < 12)
 	{
 		str = get_next_line(fd);
 		printf("%s", str);
